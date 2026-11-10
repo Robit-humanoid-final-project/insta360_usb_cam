@@ -1,6 +1,7 @@
 #include "../include/usb_cam/insta/pan_tilt_camera_node.hpp"
 #include "rclcpp/rclcpp.hpp"
 
+// #include <sensor_msgs/msg/compressed_image.hpp>
 #include <sensor_msgs/msg/image.hpp>
 
 #include <cv_bridge/cv_bridge.hpp>
@@ -159,7 +160,12 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn PanTil
     }
 
     image_pub_ = this->create_publisher<sensor_msgs::msg::Image>(topic.c_str(), 1);
-    compressed_image_pub_ = this->create_publisher<sensor_msgs::msg::Image>(compressed_topic.c_str(), 1);
+    // image, compressed_image 중 사용하지 않는 것은 비활성화 하는 것이 리소스 측면에서 이점이 있음
+    // 카메라가 PC에 직접 연결되어 있으므로 Image를 사용하는 것이 좋은 방향
+    // 기존 image를 compressed_image 이름으로 사용 중이었으므로
+    // copressed_image는 비활성화하고, image를 사용하는 것으로 변경
+    // compressed_image_pub_ = this->create_publisher<sensor_msgs::msg::CompressedImage>(compressed_topic.c_str(),
+    // 1);
     camera_info_pub_ = this->create_publisher<sensor_msgs::msg::CameraInfo>(camera_info_topic.c_str(), 5);
     compressed_camera_info_pub_ =
         this->create_publisher<sensor_msgs::msg::CameraInfo>(compressed_camera_info_topic.c_str(), 5);
@@ -185,8 +191,8 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn PanTil
 {
     RCLCPP_INFO(this->get_logger(), "Activating PanTiltCamera Lifecycle...");
 
-    // image_pub_->on_activate();
-    compressed_image_pub_->on_activate();
+    image_pub_->on_activate();
+    // compressed_image_pub_->on_activate();
     camera_info_pub_->on_activate();
     compressed_camera_info_pub_->on_activate();
     pan_tilt_status_pub_->on_activate();
@@ -204,13 +210,12 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn PanTil
             header.frame_id = frame_id;
             if (!frame.empty())
             {
-                // sensor_msgs::msg::Image::SharedPtr img_msg =
-                //   cv_bridge::CvImage(header, "bgr8", frame).toImageMsg();
-                // image_pub_->publish(*img_msg);
+                sensor_msgs::msg::Image::SharedPtr img_msg = cv_bridge::CvImage(header, "bgr8", frame).toImageMsg();
+                image_pub_->publish(*img_msg);
 
-                sensor_msgs::msg::Image::SharedPtr compressed_img_msg =
-                    cv_bridge::CvImage(header, "bgr8", frame).toImageMsg();
-                compressed_image_pub_->publish(*compressed_img_msg);
+                // sensor_msgs::msg::CompressedImage::SharedPtr compressed_img_msg =
+                //     cv_bridge::CvImage(header, "bgr8", frame).toCompressedImageMsg(cv_bridge::JPG);
+                // compressed_image_pub_->publish(*compressed_img_msg);
             }
             publish_camera_info(header);
             publish_compressed_camera_info(header);
@@ -320,7 +325,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn PanTil
     timer_.reset();
 
     image_pub_->on_deactivate();
-    compressed_image_pub_->on_deactivate();
+    // compressed_image_pub_->on_deactivate();
     camera_info_pub_->on_deactivate();
     compressed_camera_info_pub_->on_deactivate();
     pan_tilt_status_pub_->on_deactivate();
@@ -344,7 +349,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn PanTil
         camera_.reset();
     }
     image_pub_.reset();
-    compressed_image_pub_.reset();
+    // compressed_image_pub_.reset();
     camera_info_pub_.reset();
     compressed_camera_info_pub_.reset();
     pan_tilt_status_pub_.reset();
@@ -365,7 +370,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn PanTil
         camera_.reset();
     }
     image_pub_.reset();
-    compressed_image_pub_.reset();
+    // compressed_image_pub_.reset();
     camera_info_pub_.reset();
     compressed_camera_info_pub_.reset();
 
@@ -515,7 +520,7 @@ void PanTiltCamera::get_param()
     std::string topic_str = this->declare_parameter<std::string>("topic", "/camera/image_raw");
     std::string compressed_topic_str =
         this->declare_parameter<std::string>("compressed_topic", "/camera/compressed_image");
-    topic = "/" + camera_name + topic_str;
+    topic = "/" + camera_name + topic_str; // topic: "camera1/camera/image_raw"
     compressed_topic = "/" + camera_name + compressed_topic_str;
     camera_info_topic = "/" + camera_name + "/info";
     compressed_camera_info_topic = "/" + camera_name + "/compressed_info";
