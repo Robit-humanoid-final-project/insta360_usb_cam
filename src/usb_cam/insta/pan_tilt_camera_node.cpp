@@ -159,7 +159,8 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn PanTil
         return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
     }
 
-    image_pub_ = this->create_publisher<sensor_msgs::msg::Image>(topic.c_str(), 1);
+    rclcpp::QoS camera_qos(rclcpp::KeepLast(1));
+    image_pub_ = this->create_publisher<sensor_msgs::msg::Image>(topic.c_str(), camera_qos);
     // image, compressed_image 중 사용하지 않는 것은 비활성화 하는 것이 리소스 측면에서 이점이 있음
     // 카메라가 PC에 직접 연결되어 있으므로 Image를 사용하는 것이 좋은 방향
     // 기존 image를 compressed_image 이름으로 사용 중이었으므로
